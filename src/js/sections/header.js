@@ -1,0 +1,157 @@
+
+
+const HEADER_STRIPE_COLOR_MAP = {
+  'bg-brand-green': '#16a34a',
+  'bg-brand-blue': '#2563eb',
+  'bg-brand-yellow': '#facc15',
+  'bg-brand-red': '#dc2626',
+  'bg-white': '#ffffff',
+  'bg-black': '#111827'
+};
+
+
+const headerScrollConfig = {
+  hideOnScrollDown: true,
+  revealThreshold: 72
+};
+
+
+function injectHeaderFxStyles() {
+  if (document.getElementById('header-fx-styles')) return;
+
+  const style = document.createElement('style');
+  style.id = 'header-fx-styles';
+  style.textContent = `
+    @media (prefers-reduced-motion: no-preference) {
+
+      /* Stripe segments grow in from the center, staggered per-segment */
+      @keyframes headerStripeGrow {
+        from { transform: scaleX(0); opacity: 0; }
+        to   { transform: scaleX(1); opacity: 1; }
+      }
+      #header-stripe-left > div,
+      #header-stripe-right > div {
+        transform-origin: center;
+        animation: headerStripeGrow 0.6s ease both;
+      }
+
+      /* Header hides on scroll-down past the reveal threshold, and
+         slides back the instant you scroll up — same element handles
+         both breakpoints, so mobile and desktop get identical behavior
+         for free. transform-only: it never changes the header's box
+         size, so there's no layout/scroll feedback loop the way a
+         padding/height shrink would cause. */
+      #site-header {
+        transition: transform 0.35s ease, box-shadow 0.35s ease;
+        will-change: transform;
+      }
+      #site-header.header-hidden {
+        transform: translateY(-100%);
+      }
+      #site-header.header-elevated:not(.header-hidden) {
+        box-shadow: 0 10px 28px -10px rgba(0, 0, 0, 0.6);
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function buildStripe(container, classNames) {
+  if (!container) return;
+  container.innerHTML = '';
+  classNames.forEach((cls, i) => {
+    const segment = document.createElement('div');
+    segment.className = `flex-1 ${cls}`;
+    segment.style.animationDelay = `${i * 70}ms`;
+    const paint = HEADER_STRIPE_COLOR_MAP[cls];
+    if (paint) segment.style.backgroundColor = paint;
+    container.appendChild(segment);
+  });
+}
+
+function renderHeader(payload) {
+  const config = Array.isArray(payload) ? payload[0] : payload;
+  if (!config) return;
+
+  const titleEl = document.getElementById('header-title');
+  if (titleEl && config.title) {
+    titleEl.textContent = config.title;
+  }
+
+  const colors = Array.isArray(config.colors) ? config.colors : [];
+  if (colors.length) {
+    // Mirror the full flag stripe on both sides of the title, so left
+    // and right accent bars show the exact same color sequence.
+    buildStripe(document.getElementById('header-stripe-left'), colors);
+    buildStripe(document.getElementById('header-stripe-right'), colors);
+  }
+
+  const scrollEffect = config.scrollEffect;
+  if (scrollEffect && typeof scrollEffect === 'object') {
+    if (typeof scrollEffect.hideOnScrollDown === 'boolean') {
+      headerScrollConfig.hideOnScrollDown = scrollEffect.hideOnScrollDown;
+    }
+    if (typeof scrollEffect.revealThreshold === 'number') {
+      headerScrollConfig.revealThreshold = scrollEffect.revealThreshold;
+    }
+  }
+}
+
+async function hydrateHeader() {
+  try {
+    const res = await fetch('data/header.json', { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`data/header.json responded ${res.status}`);
+    const data = await res.json();
+    renderHeader(data);
+  } catch (err) {
+    // Fetch failed — the static markup already in the page is left
+    // untouched, so the header still renders, just not data-driven.
+    console.error('[header] falling back to static markup —', err);
+  }
+}
+
+
+function initHeaderScrollEffect() {
+  const header = document.getElementById('site-header');
+  if (!header) return;
+
+  let lastScrollY = window.scrollY;
+  let scrollTicking = false;
+
+  function applyHeaderScrollState() {
+    const y = window.scrollY;
+    const goingDown = y > lastScrollY;
+    const pastThreshold = y > headerScrollConfig.revealThreshold;
+    const mobileMenu = document.getElementById('mobile-menu');
+    const menuOpen = mobileMenu && mobileMenu.classList.contains('menu-open');
+
+    header.classList.toggle('header-elevated', y > 8);
+
+    if (headerScrollConfig.hideOnScrollDown && !menuOpen) {
+      if (goingDown && pastThreshold) {
+        header.classList.add('header-hidden');
+      } else if (!goingDown) {
+        header.classList.remove('header-hidden');
+      }
+    } else {
+      header.classList.remove('header-hidden');
+    }
+
+    lastScrollY = y;
+    scrollTicking = false;
+  }
+
+  window.addEventListener('scroll', () => {
+    if (scrollTicking) return;
+    scrollTicking = true;
+    requestAnimationFrame(applyHeaderScrollState);
+  }, { passive: true });
+
+  applyHeaderScrollState();
+}
+
+export async function loadHeaderSection() {
+  injectHeaderFxStyles();
+  await hydrateHeader();
+  initHeaderScrollEffect();
+}
