@@ -193,8 +193,8 @@ function renderNavbar(config) {
 
 async function hydrateNavbar() {
   try {
-    const res = await fetch('data/navbar.json', { cache: 'no-cache' });
-    if (!res.ok) throw new Error(`data/navbar.json responded ${res.status}`);
+    const res = await fetch('/api/public/get_section.php?section=navbar', { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`navbar API responded ${res.status}`);
     const data = await res.json();
     renderNavbar(data);
   } catch (err) {

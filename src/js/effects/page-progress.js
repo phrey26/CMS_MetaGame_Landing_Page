@@ -1,7 +1,7 @@
 async function loadPageFxConfig() {
   try {
-    const res = await fetch('data/effects.json', { cache: 'no-cache' });
-    if (!res.ok) throw new Error(`data/effects.json responded ${res.status}`);
+    const res = await fetch('/api/public/get_section.php?section=effects', { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`effects API responded ${res.status}`);
     const data = await res.json();
     return data.progressBar || {};
   } catch (err) {

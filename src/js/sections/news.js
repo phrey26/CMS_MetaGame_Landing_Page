@@ -27,10 +27,11 @@ const DEFAULT_NEWS_ITEMS = [
 
 async function loadNewsItems() {
   try {
-    const res = await fetch('data/news.json', { cache: 'no-cache' });
-    if (!res.ok) throw new Error(`data/news.json responded ${res.status}`);
+    const res = await fetch('/api/public/get_section.php?section=news', { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`news API responded ${res.status}`);
     const data = await res.json();
-    return Array.isArray(data) && data.length ? data : DEFAULT_NEWS_ITEMS;
+    const items = Array.isArray(data) ? data : data.items;
+    return Array.isArray(items) && items.length ? items : DEFAULT_NEWS_ITEMS;
   } catch (err) {
     console.error('[news] using default data —', err);
     return DEFAULT_NEWS_ITEMS;

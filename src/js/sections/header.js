@@ -99,8 +99,8 @@ function renderHeader(payload) {
 
 async function hydrateHeader() {
   try {
-    const res = await fetch('data/header.json', { cache: 'no-cache' });
-    if (!res.ok) throw new Error(`data/header.json responded ${res.status}`);
+    const res = await fetch('/api/public/get_section.php?section=header', { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`header API responded ${res.status}`);
     const data = await res.json();
     renderHeader(data);
   } catch (err) {

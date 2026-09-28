@@ -9,10 +9,11 @@ const DEFAULT_EMBLEM_STOPS = [
 
 async function loadEmblemStops() {
   try {
-    const res = await fetch('data/emblem.json', { cache: 'no-cache' });
-    if (!res.ok) throw new Error(`data/emblem.json responded ${res.status}`);
+    const res = await fetch('/api/public/get_section.php?section=emblem', { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`emblem API responded ${res.status}`);
     const data = await res.json();
-    return Array.isArray(data) && data.length ? data : DEFAULT_EMBLEM_STOPS;
+    const stops = Array.isArray(data) ? data : data.stops;
+    return Array.isArray(stops) && stops.length ? stops : DEFAULT_EMBLEM_STOPS;
   } catch (err) {
     console.error('[emblem] using default color data —', err);
     return DEFAULT_EMBLEM_STOPS;

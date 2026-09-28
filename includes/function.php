@@ -1,8 +1,8 @@
 <?php
-function jsonResponse(mixed $data, int $statudCode = 200)
+function jsonResponse(mixed $data, int $statusCode = 200): void
 {
-    http_response_code($statudCode);
-    header('Content-Type: applicition/json');
+    http_response_code($statusCode);
+    header('Content-Type: application/json');
     echo json_encode($data);
     exit;
 }
@@ -12,24 +12,41 @@ function sanitize(string $input): string
     return htmlspecialchars(strip_tags(trim($input)), ENT_QUOTES, 'UTF-8');
 }
 
+/**
+ * Recursively runs sanitize() over every string leaf of a value coming from
+ * a request body, leaving numbers/booleans/null untouched.
+ */
+function sanitizeValue(mixed $value): mixed
+{
+    if (is_string($value)) {
+        return sanitize($value);
+    }
+
+    if (is_array($value)) {
+        return array_map('sanitizeValue', $value);
+    }
+
+    return $value;
+}
+
 function getArrayFields(array $content): array
 {
     return array_keys(
         array_filter($content, fn($v) => is_array($v) && array_is_list($v))
-        );
+    );
 }
 
 function getRequestBody(): array
 {
     $raw = file_get_contents('php://input');
 
-    if(empty($raw)) {
-        jsonResponse(['error => 'Request body is empty.'.'] 400);
+    if (empty($raw)) {
+        jsonResponse(['error' => 'Request body is empty.'], 400);
     }
 
-    $data = json_decode(raw,true);
+    $data = json_decode($raw, true);
 
-    if (json_last_erros() !== JSON_ERROR_NAME) {
+    if (json_last_error() !== JSON_ERROR_NONE) {
         jsonResponse(['error' => 'Invalid JSON: ' . json_last_error_msg()], 400);
     }
 
@@ -42,20 +59,20 @@ function getSectionContent(PDO $pdo, string $section): array
     $stmt->execute([$section]);
     $raw = $stmt->fetchColumn();
 
-    if (raw === false) {
-        jsonResponse(['error' => "Section '{$section}' not found."], 400);
+    if ($raw === false) {
+        jsonResponse(['error' => "Section '{$section}' not found."], 404);
     }
 
     return json_decode($raw, true);
 }
 
-function saveContent(PDO $pdo, string $section, array $content): void
+function saveSectionContent(PDO $pdo, string $section, array $content): void
 {
     $stmt = $pdo->prepare(
         'UPDATE page_sections SET content = ? WHERE section = ?'
     );
     $stmt->execute([
-        json_decode($content, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        json_encode($content, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         $section
     ]);
 }
